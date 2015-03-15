@@ -102,7 +102,6 @@ namespace Antelope_Test
             Console.WriteLine(ts.Seconds);
 
             //NLP 
-
             //Get an input
             //Console.WriteLine("input: ");
             //string input = Console.ReadLine();
@@ -133,12 +132,12 @@ namespace Antelope_Test
             
             foreach (string key in diction.Keys)
             {
-                //if (diction[key] >= totalcount)
-                //{
+                if (diction[key] >= totalcount)
+                {
                     Console.WriteLine("Key: {0}, Score: {1}.", key, diction[key]);
                     totalcount = diction[key];
                     result = "Key: " + key + "Score: " + diction[key];
-                //}
+                }
             }
             Console.WriteLine("Total in dictionary: {0}", diction.Count);
             return result;

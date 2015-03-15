@@ -210,7 +210,7 @@ namespace Antelope_Test
         {
             Console.WriteLine("Ready");
             //Get the sentence
-            string sentence = "The cat runs.";
+            string sentence = "The cat creates a list. Create.";
 
             //Tokenize
             IList<IWord> words = simpleTagger.TagText(sentence);
@@ -219,7 +219,8 @@ namespace Antelope_Test
             {
 
                 Console.WriteLine("NEW WORD" + Iw.Text);
-
+                /*
+                #region NounExamples
                 if (Iw.PartOfSpeech == Proxem.Antelope.PartOfSpeech.Noun)
                 {
                     //Find all senses of the word
@@ -258,6 +259,61 @@ namespace Antelope_Test
                         }
                     }
                 }
+                #endregion
+                 * */
+
+                #region verbExamples
+                if (Iw.PartOfSpeech == Proxem.Antelope.PartOfSpeech.Verb)
+                {
+                    Console.WriteLine("Word: " + Iw);
+                    Console.WriteLine("Annotations: " + Iw.Annotations);
+                    Console.WriteLine("Forms:");
+                    foreach(string form in Iw.BaseForms)
+                    {
+                        Console.WriteLine(" {0}", form);
+                    }
+                    Console.WriteLine("BaseForms: " + Iw.BaseForms[0].GetType());
+                    Console.WriteLine("IndexInSentence: " + Iw.IndexInSentence);
+                    Console.WriteLine("Language: " + Iw.Language);
+                    Console.WriteLine("PartOfSpeech: " + Iw.PartOfSpeech);
+                    Console.WriteLine("Senses: " + Iw.Senses);
+                    Console.WriteLine("Subwords: " + Iw.Subwords);
+                    Console.WriteLine("Tag: " + Iw.Tag);
+                    Console.WriteLine("TagAsString: " + Iw.TagAsString);
+                    Console.WriteLine("Text: " + Iw.Text);
+                    Console.WriteLine("Tokens: " + Iw.Tokens);
+                    var EnglishWordForms = Enum.GetValues(typeof(EnglishWordForm));
+                    foreach(EnglishWordForm form in EnglishWordForms)
+                    {
+                        Console.WriteLine("{0}: {1}",form.ToString(), lexicon.GetInflectedForms(Iw.Text, form)[0]);
+                    }
+                    
+                    Console.WriteLine();
+                    //Find all senses of the word
+                    IList<ILemma> senses = lexicon.FindSenses(Iw.Text, Iw.PartOfSpeech);
+                    
+
+                    //foreach sense
+                    foreach (ILemma sense in senses)
+                    {
+                        Console.WriteLine(sense.Lemma.Text);
+                        Console.WriteLine(sense.Synset.Definition);
+
+                        var RelationTypes = Enum.GetValues(typeof(RelationType));
+                        foreach(RelationType relationType in RelationTypes)
+                        {
+                            Console.WriteLine(relationType.ToString());
+                            IList<ILemma> lems = sense.Lemma.RelatedLemmas(relationType);
+                            foreach (ILemma lem in lems)
+                            {
+                                Console.WriteLine("    {0}",lem.Text);
+                            }
+
+                        }
+                        Console.WriteLine();
+                    }
+                }
+                #endregion
             }
         }
 
@@ -294,5 +350,42 @@ namespace Antelope_Test
 
             }
         }
+
+        public IList<ILemma> getTrueVerb(IScoredLemma Verb)
+        {
+            IList<ILemma> synset = lexicon.FindSenses(Verb.Lemma.Text, Verb.Lemma.PartOfSpeech);
+            //If it is a registered verb #there's a betyter test than this
+            if (synset.Count > 1)
+            {
+                return synset;
+            }
+            //Cut a letter off (Usually 's')
+            String verbText = Verb.Lemma.Text.Substring(0, Verb.Lemma.Text.Length - 1);
+            synset = lexicon.FindSenses(verbText, Verb.Lemma.PartOfSpeech);
+            //If it is a listed verb
+            if (synset.Count > 1)
+            {
+                //Check to see if the third person singular is the same as the original word
+                if (lexicon.GetInflectedForms(verbText, EnglishWordForm.ThirdPersonSingular)[0]
+                    == Verb.Lemma.Text)
+                {
+                    return synset;
+                }
+            }
+            verbText = Verb.Lemma.Text.Substring(0, Verb.Lemma.Text.Length - 2);
+            synset = lexicon.FindSenses(verbText, Verb.Lemma.PartOfSpeech);
+
+            if (lexicon.GetInflectedForms(verbText, EnglishWordForm.ThirdPersonSingular)[0]
+                == Verb.Lemma.Text)
+            {
+                return synset;
+            }
+
+            return lexicon.FindSenses(Verb.Lemma.Text, Verb.Lemma.PartOfSpeech);
+        }
+     
+
+        
+            
     }
 }

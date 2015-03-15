@@ -104,7 +104,12 @@ namespace Antelope_Test
             //findAssemblies(@"C:\Program Files\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5");
         }
 
-
+        /// <summary>
+        /// Loads up assemblies into NutCShell.
+        /// *Only loads types at the moment
+        /// Skips over: Field, property, method, event, errors string
+        /// </summary>
+        /// <param name="filePath"></param>
         private void findAssemblies(string filePath)
         {
             
@@ -126,6 +131,7 @@ namespace Antelope_Test
                         //get all types in the assembly
                         Type[] types = asm.GetTypes();
                         
+                        
                         //create part 2 of nutCShell (the dictionary containing all methods
                         NutCShell.Add(asm, new Dictionary<csThings,Dictionary<string, IList<IWord>>>());
                         NutCShell[asm].Add(csThings.Constructor, new Dictionary<string, IList<IWord>>());
@@ -145,8 +151,8 @@ namespace Antelope_Test
                             //foreach element in the doc
                             foreach (XmlElement elm in doc["doc"]["members"])
                             {
+                                //get the type of csThing
                                 string csele = elm.Attributes["name"].Value.Substring(0, 2);
-                                //Console.WriteLine(csele);
 
                                 if (csele == "T:")
                                 {
@@ -204,23 +210,37 @@ namespace Antelope_Test
                                 {
                                     //simple string for method
                                     string methodString = elm.Attributes["name"].Value.Substring(2, elm.Attributes["name"].Value.Length - 2);
+                                    Console.WriteLine(methodString);
+                                    foreach(Type t in types)
+                                    {
+                                        MethodInfo[] methods = t.GetMethods();
+                                        foreach(MethodInfo m in methods)
+                                        {
+                                            Console.WriteLine(m.);
+                                            if(m.Name == methodString)
+                                            {
+                                                NutCShell[asm][csThings.Type].Add(m.Name, ant.ITag(elm["summary"].InnerText));
+                                                Console.WriteLine(m.Name);
+                                            }
+                                        }
+                                    }
                                     //Console.WriteLine("element: " + methodString);
                                 }
                                 else if(csele == "P:")
                                 {
-                                    //simple string for param
+                                    //simple string for property
                                     string paramString = elm.Attributes["name"].Value.Substring(2, elm.Attributes["name"].Value.Length - 2);
                                     //Console.WriteLine("element: " + paramString);
                                 }
                                 else if (csele == "F:")
                                 {
-                                    //simple string for enum
+                                    //simple string for field
                                     string enumString = elm.Attributes["name"].Value.Substring(2, elm.Attributes["name"].Value.Length - 2);
                                     //Console.WriteLine("element: " + enumString);
                                 }
                                 else if (csele == "E:")
                                 {
-                                    //simple string for enum
+                                    //simple string for event
                                     string eventString = elm.Attributes["name"].Value.Substring(2, elm.Attributes["name"].Value.Length - 2);
                                     //Console.WriteLine("element: " + eventString);
                                 }
@@ -265,6 +285,151 @@ namespace Antelope_Test
             }
         }
 
+
+        public Dictionary<string, double> compareAll(string input)
+        {
+            int x = 0;
+            //Need to keep a record of each assembly->csthing->Type and their scores
+            
+            //Dictionary<Assembly, Dictionary<csThings, Dictionary<string, int>>> score = new Dictionary<Assembly,Dictionary<csThings,Dictionary<string,int>>>();
+            Dictionary<string, double> score = new Dictionary<string, double>();
+
+            //tag the incoming senstence
+            IList<IWord> taggedSentance = ant.ITag(input);
+
+            //for each word in the sentence
+            foreach (IWord word in taggedSentance)
+            {
+                //if the word is a noun or verb
+                if (word.PartOfSpeech == Proxem.Antelope.PartOfSpeech.Noun | word.PartOfSpeech == Proxem.Antelope.PartOfSpeech.Verb)
+                {
+                    
+                    //Get the synset of the word
+                    IList<ILemma> synset = ant.lexicon.FindSenses(word.Text, word.PartOfSpeech);
+                    
+                    //
+                    //Need to check and edit if sysnet.count = 0; "Creates == emptySet != create"
+                    //
+
+
+                    /*
+                    Console.WriteLine(word.PartOfSpeech);
+                    Console.WriteLine(synset[0].Lemma.Synset.Definition);
+
+                    foreach (RelationType rel in (RelationType[])Enum.GetValues(typeof(RelationType)))
+                    {
+                        Console.WriteLine(rel.ToString());
+                        foreach (ILemma str in synset[0].RelatedLemmas(rel))
+                        {
+                            Console.WriteLine(str.Text);
+                        }
+                    }*/
+
+                    //Compare it to all the assemblies
+                    foreach (Assembly aaaa in NutCShell.Keys)
+                    {
+                        Console.WriteLine("Looking in: " + aaaa.GetName().Name);
+                        //foreach csThing (Type, field, method etc.)
+                        foreach (csThings cs in (csThings[])Enum.GetValues(typeof(csThings)))
+                        {
+                            //go through every tagged Type, field, method
+                            foreach (string str in NutCShell[aaaa][cs].Keys)
+                            {
+                                //Foreach word in the description of the current str
+                                foreach (IWord wordbit in NutCShell[aaaa][cs][str])
+                                {
+                                    //If it's a noun, only search nouns.... verb=> verbs etc.
+                                    if (wordbit.PartOfSpeech == word.PartOfSpeech)
+                                    {
+                                        try
+                                        {
+                                            
+                                            IList<ILemma> wordBitSynset = ant.getTrueVerb(wordbit.ComputeSenses(ant.lexicon)[0]);
+                                            x += 1;
+                                            //very basic heuristic
+                                            //If the word synset equals the input synset
+                                            /*
+                                            Console.WriteLine(word.Text + ":_____________________________________");
+                                            Console.WriteLine("Synset: " + synset[0].Synset);
+                                            Console.WriteLine("Synset def: " + synset[0].Synset.Definition);
+                                            Console.WriteLine("synset ID: " +synset[0].SynsetId);
+                                            Console.WriteLine("Frequency: " +synset[0].Frequency);
+                                            Console.WriteLine("Lemma: " + synset[0].Lemma.Text);
+
+                                            
+                                            Console.WriteLine(wordbit.Text);
+                                            
+                                            
+                                            
+
+                                            
+                                            Console.WriteLine("Synset: " + wordBitSynset[0].Synset);
+                                            Console.WriteLine("Synset def: " + wordBitSynset[0].Synset.Definition);
+                                            Console.WriteLine("synset ID: " + wordBitSynset[0].SynsetId);
+                                            Console.WriteLine("Frequency: " + wordBitSynset[0].Frequency);
+                                            Console.WriteLine("Lemma: " + wordBitSynset[0].Lemma.Text);
+
+                                            Console.WriteLine();
+                                            */
+                                            if (synset[0].SynsetId == wordBitSynset[0].SynsetId)
+                                            {
+                                                //If matching add 1/totalNumberOfWordsInDefinition to score
+                                                tryAddDict(score, str, 1.0/NutCShell[aaaa][cs][str].Count); 
+                                            }
+                                        }
+                                        catch(Exception e)
+                                        {
+                                            //Console.WriteLine("Error");
+                                            //Console.WriteLine();
+                                            //Console.WriteLine(e);
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return score;
+
+        }
+
+        /// <summary>
+        /// Keeps a record of the matching csThings and their scores.
+        /// Run from CompareAll
+        /// </summary>
+        /// <param name="stint"></param>
+        /// <param name="st"></param>
+        /// <param name="tint"></param>
+        private void tryAddDict(Dictionary<string, double> stint, string st, double tint)
+        {
+            if (stint.Keys.Contains(st))
+            {
+                stint[st] += tint;
+            }
+            else
+            {
+                stint.Add(st, tint);
+            }
+        }
+
+        /// <summary>
+        /// Antelope Tags sentence inputs
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        private IList<IWord> tagString(string input)
+        {
+            return ant.ITag(input);
+        }
+
+
+        #region Currently unused mehtods
+        
+        /// <summary>
+        /// Prints all loaded assemblies to console.
+        /// </summary>
         private void writeAll()
         {
             foreach (Assembly aaaa in NutCShell.Keys)
@@ -282,16 +447,12 @@ namespace Antelope_Test
             }
         }
 
-        private IList<IWord> tagString(string input)
-        {
-            return ant.ITag(input);
-        }
 
-        
+
         public Dictionary<string, int> compareAssembly(string input)
         {
             //Need to keep a record of each assembly->csthing->Type and their scores
-            Dictionary<string, int> score = new Dictionary<string,int>();
+            Dictionary<string, int> score = new Dictionary<string, int>();
 
             //tag the incoming senstence
             IList<IWord> taggedSentance = ant.ITag(input);
@@ -327,110 +488,8 @@ namespace Antelope_Test
             }
 
             return score;
-            
-        }
-
-        public Dictionary<string, double> compareAll(string input)
-        {
-            //Need to keep a record of each assembly->csthing->Type and their scores
-            
-            //Dictionary<Assembly, Dictionary<csThings, Dictionary<string, int>>> score = new Dictionary<Assembly,Dictionary<csThings,Dictionary<string,int>>>();
-            Dictionary<string, double> score = new Dictionary<string, double>();
-
-            //tag the incoming senstence
-            IList<IWord> taggedSentance = ant.ITag(input);
-
-            //for each word in the sentence
-            foreach (IWord word in taggedSentance)
-            {
-                //if the word is a noun or verb
-                if (word.PartOfSpeech == Proxem.Antelope.PartOfSpeech.Noun | word.PartOfSpeech == Proxem.Antelope.PartOfSpeech.Verb)
-                {
-                    //Get the different senses for that particular word
-                    IList<ILemma> synset = ant.lexicon.FindSenses(word.Text, word.PartOfSpeech);
-                    Console.WriteLine(word.PartOfSpeech);
-                    Console.WriteLine(synset[0].Lemma.Synset.Definition);
-
-                    foreach (RelationType rel in (RelationType[])Enum.GetValues(typeof(RelationType)))
-                    {
-                        Console.WriteLine(rel.ToString());
-                        foreach (ILemma str in synset[0].RelatedLemmas(rel))
-                        {
-                            Console.WriteLine(str.Text);
-                        }
-                    }
-
-                    //Compare it to all the assemblies
-                    foreach (Assembly aaaa in NutCShell.Keys)
-                    {
-                        Console.WriteLine("Looking in: " + aaaa.GetName().Name);
-                        foreach (csThings cs in (csThings[])Enum.GetValues(typeof(csThings)))
-                        {
-                            foreach (string str in NutCShell[aaaa][cs].Keys)
-                            {
-                                //Get each word
-                                foreach (IWord wordbit in NutCShell[aaaa][cs][str])
-                                {
-                                    if (wordbit.PartOfSpeech == word.PartOfSpeech)
-                                    {
-                                        try
-                                        {
-                                            //very basic heuristic
-                                            //If the word synset equals the input synset
-                                            /*
-                                            Console.WriteLine(word.Text + ":");
-                                            Console.WriteLine("Synset: " + synset[0].Synset);
-                                            Console.WriteLine("Synset def: " + synset[0].Synset.Definition);
-                                            Console.WriteLine("synset ID: " +synset[0].SynsetId);
-                                            Console.WriteLine("Frequency: " +synset[0].Frequency);
-                                            Console.WriteLine("Lemma: " + synset[0].Lemma.Text);
-
-                                            Console.WriteLine();
-                                            
-                                            Console.WriteLine("word in def: " + wordbit.Text);
-                                            Console.WriteLine(wordbit.BaseForms[0]);*/
-                                            IList<ILemma> wordBitSynset = ant.lexicon.FindSenses(wordbit.Text, wordbit.PartOfSpeech);
-                                            /*
-                                            Console.WriteLine("Synset: " + wordBitSynset[0].Synset);
-                                            Console.WriteLine("synset ID: " + wordBitSynset[0].SynsetId);
-                                            Console.WriteLine("Frequency: " + wordBitSynset[0].Frequency);
-                                            Console.WriteLine("Lemma: " + wordBitSynset[0].Lemma.Text);
-
-                                            Console.WriteLine();
-                                            */
-                                            if (synset[0].SynsetId == wordBitSynset[0].SynsetId)
-                                            {
-                                                tryAddDict(score, str, 1.0); //Added after "1.0": /NutCShell[aaaa][cs][str].Count
-                                            }
-                                        }
-                                        catch
-                                        {
-                                            //Console.WriteLine("Error");
-                                            //Console.WriteLine();
-                                            //Console.WriteLine(e);
-                                        }
-                                    }
-
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return score;
 
         }
-
-        private void tryAddDict(Dictionary<string, double> stint, string st, double tint)
-        {
-            if (stint.Keys.Contains(st))
-            {
-                stint[st] += tint;
-            }
-            else
-            {
-                stint.Add(st, tint);
-            }
-        }
+        #endregion
     }
 }
